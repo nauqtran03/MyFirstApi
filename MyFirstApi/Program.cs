@@ -1,6 +1,9 @@
 
+using MyFirstApi.Data;
 using System.Reflection;
-
+using Microsoft.EntityFrameworkCore;
+using FluentValidation.AspNetCore;
+using MyFirstApi.Model;
 namespace MyFirstApi
 {
     public class Program
@@ -10,7 +13,8 @@ namespace MyFirstApi
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
-
+            builder.Services.AddDbContext<ApplicationDbContext>(static options =>
+    options.UseInMemoryDatabase("ProductsDb"));
             builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
@@ -21,7 +25,8 @@ namespace MyFirstApi
                 var xmlPath = Path.Combine(AppContext.BaseDirectory, xml);
                 //c.IncludeXmlComments(xmlPath);
             });
-
+            builder.Services.AddFluentValidation(fv=>
+            fv.RegisterValidatorsFromAssemblyContaining<ProductValidator>());
             var app = builder.Build();
 
             app.MapGet("/", () => $"Hello at {DateTime.Now}");
@@ -35,6 +40,18 @@ namespace MyFirstApi
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
+
+            using (var scope = app.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider
+                    .GetRequiredService<ApplicationDbContext>();
+                db.Products.AddRange(
+                   new Model.Product {Id =1, Name = "Laptop",Price = 1200},
+                   new Model.Product{ Id = 2, Name = "Smartphone", Price = 800 },
+                   new Model.Product{ Id = 3, Name = "Tablet", Price = 600 }
+                );
+                db.SaveChanges();
+            };
 
             app.UseHttpsRedirection();
 
